@@ -19,9 +19,9 @@ agent对state的反应叫做policy，用$\pi$表示，两种policy，一种叫De
 ## Bellman Equations
 总共有四个公式，但是这里只教了其中一个。某一个状态的期望值等于之后的期望值加上这个行为的reward  
 $v_\pi(s) = E_\pi [R_{t+1} + \gamma v_\pi (S_{t+1})| S_{t}=s]$  
-然后具体到Deterministic
+然后具体到Deterministic的情况
 ![img](./img/Bellman_Deter.png)
-Stochastic
+Stochastic的情况
 ![img](./img/Bellman_Stoch.png)
 实际这两个变体就是计算所有可能性而已，就拿上面的例子来举例
 现在%state_t% = high，假设我们的$\pi (search|high) = 0.4 \pi (wait|high) = 0.6 \gamma=0.8$那么我们算式是  
