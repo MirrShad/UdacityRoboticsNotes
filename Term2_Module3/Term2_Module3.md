@@ -1,7 +1,7 @@
 # Introduction to Localization
 常见算法为Extended Kalman Filters(EKF)，Markov Localization，Grid Localization 和 Monte Carlo Localization(Paritcle Filter)(MCL)，本章主要介绍EKF和MCL
 Localization常见的问题，Position Tracking，Global Localization和 Kidnapped Robot.
-Kalman Filters(KF)能分为三类，KF(linear)，EKF(nonlinear)，UKF(无损卡尔曼滤波)(highly nonlinear)，本章就介绍前两个
+Kalman Filters(KF)能分为三类，KF(linear)，EKF(nonlinear)，UKF(无损卡尔曼滤波)(highly nonlinear)，本章就介绍前两个，下图为定位的两个步骤，Measurement Update和State Prediction
 ![流程](./img/Process.png)  
 ## 一阶高斯  
 ### Measurement Update  
