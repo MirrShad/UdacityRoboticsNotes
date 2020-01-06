@@ -30,10 +30,13 @@ $$\sigma'^2 = \sigma_1^2 + \sigma_2^2$$
 ![公式](./img/StatePredictionFormula.png)  
 ## 二阶高斯  
 现在我们扩展到高阶的情况，不仅仅需要将上面的单变量转成公式形式，还有一些别的因素要考虑进去。首先需要注意的是从低阶变成高阶不是说从一维数轴变成二维平面或者三维立体，而是从单变量到多个可能**互相相关**的变量。比如一阶里面举得例子状态只有当前位置，二阶里面的例子当前位置和速度。  
+二阶高斯的示意图如图  
+![img](./img/KF_2.webp)  
 ### State Prediction  
 我们定义x为当前状态，F为状态转换矩阵，B为外部影响。公式如下  
-$$\widehat{x}_k = F_k \widehat{x}_{k-1} + B_k \widehat{u}_k$$  
-像上面的例子当中仅仅考虑位置，那么速度就是外力，这里方程就是$x_k = 1 * x_{k-1} + 7.5 * 1$。这里要是我们状态选择为位置和速度两个参数，我们就没有外部影响了，所以$B_k=0$可以这么列
+$$\widehat{x}_k = F_k \widehat{x}_{k-1} + B_k \widehat{u}_k + w_k$$
+这个公式就是一阶中的$\mu' = \mu_1 + \mu_2$，这里$w_k$表示的是外部不确定因素对机器人造成的影响$w_k$服从高斯分布$N(0,Q_k)$，所以这里$w_k$为0，很多文档就把这一项省略掉了。但是如果明确知道均值不为零的是时候，就需要注意了。  
+像上面的例子当中仅仅考虑位置，那么速度就是外力，这里方程就是$x_k = 1 * x_{k-1} + 7.5 * 1 + 0$。这里要是我们状态选择为位置和速度两个参数，我们就没有外部影响了，所以$B_k=0$可以这么列
 $$
 \widehat{x}_k = 
 \begin{bmatrix}
@@ -60,7 +63,7 @@ $$Cov(Ax)=A \Sigma A^T$$
 在一阶的情况，因为A=1所以不需要这个公式。  
 由于肯定存在我们无法预测的外力，比如无人机在空中飞的时候受的风力，所以协方差的更新我们也要考虑噪声，我们这里添加了一个$Q_k$作为不确定的影响。在一阶的例子中就是$\sigma^2=5$  
 然后下面这两个公式就是在高阶的情况下，State Prediction的公式  
-$$\widehat{x}_k = F_k \widehat{x}_{k-1} + B_k \overrightarrow{u}_k$$  
+$$\widehat{x}_k = F_k \widehat{x}_{k-1} + B_k \overrightarrow{u}_k+w_k$$  
 $$P_k = F_k P_{k-1} F_k^T + Q_k$$  
 
 ### Measurement Update  
@@ -68,8 +71,11 @@ $$P_k = F_k P_{k-1} F_k^T + Q_k$$
 $$K=H P_k H^T (H P_k H^T + R)^{-1}$$  
 得到了卡尔曼增益，我们现在先来求均值，我们设$\overrightarrow{z}_k$为传感器读数，根据一阶更新均值的公式$\mu' = \mu + k(v-\mu)$，我们能得到高阶的均值更新公式
 $$H \widehat{x'}_k = H \widehat{x}_k + K(\overrightarrow{z}_k - H \widehat{x}_k)$$  
+大部分资料会写成这样
+$$y_k = H \widehat{x}_k + K(\overrightarrow{z}_k - H \widehat{x}_k)$$
 然后根据一阶更新方差的公式$\sigma'^2 = \sigma_1^2 + \sigma_2^2$，我们能得到高阶的方差
-$$H P'_k H^T = H P_k H^T - K H P_k H^T$$。  
+$$H P'_k H^T = H P_k H^T - K H P_k H^T$$  
+#### 精简版本 Measurement Update
 我们可以将这三个公式再精简一下，我们设一个新的卡尔曼增益  
 $$
 K = H K' = H (P_k H^T (H P_k H^T + R)^{-1})
@@ -81,10 +87,19 @@ $$
 $$
 P'_k = P_k - K' H P_k
 $$
+### 具体实现
+工程上面会需要检查噪声是否满足高斯白噪声，我们把上面$\overrightarrow{z}_k - H \widehat{x}_k$称为新息，我们通过对新息进行卡方检测，来判断，[检测思路](https://blog.csdn.net/lmmmmmmmm/article/details/88121772)  
+
 ## Extended Kalman Filter  
 对于非线性系统，更新means和covariance  
-高斯分补经过非线性系统更新过后会变成非常复杂分布。means可以通过非线性函数来计算，但是经过非线性系统转换covariance不能再通过一个数表示。所以covariace要通过另外的方式来计算。我们可以通过在极小范围内线性的方法来估算。极小范围内线性的计算方法为泰勒级数。  
-![公式](./img/EKFGausion.png)  
+高斯分补经过非线性系统更新过后会变成非常复杂分布。means可以通过非线性函数来计算，但是经过非线性系统转换covariance不能再通过一个数表示。所以covariace要通过另外的方式来计算。我们可以通过在极小范围内线性的方法来估算。极小范围内线性的计算方法为泰勒级数。EKF跟KF唯一的不同就在于此，我们的H和F是通过泰勒级数来更新的。  
+用公式理解就是KF是
+$$x_k= A_k x_{k-1} + B_k u_k + w_k$$
+$$y_k = H_k x_k + v_k$$
+现在EKF是
+$$x_k= f_k(x_{k-1},u_k) + w_k$$
+$$y_k = h_k(x_k) + v_k$$
+我们在EKF中先求一阶雅可比矩阵，然后求h_k和f_k中的一阶泰勒公式。具体实现看代码。
 
 # Monte Carlo Localization
 相比于EKF的优点  
@@ -95,3 +110,6 @@ resample的方法是像是转转盘一样，将每个点按照概率大小铺在
 
 ---
 参考资料[1]:https://zhuanlan.zhihu.com/p/39912633
+参考资料[2]:https://www.cnblogs.com/zhoug2020/p/7619989.html
+参考资料[3]:https://www.jianshu.com/p/f6ce8943560c?from=singlemessage
+参考资料[4]:https://blog.csdn.net/lmmmmmmmm/article/details/88121772
